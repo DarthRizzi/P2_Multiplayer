@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "P2 Multiplayer.sln"
+    "dotnet.defaultSolution": "P2_Multiplayer.sln"
 }
