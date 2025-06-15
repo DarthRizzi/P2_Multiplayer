@@ -8,12 +8,15 @@ public class MainMenuController : MonoBehaviour
     public Button playButton;    // Botão para iniciar o jogo
     public Button closeButton;  // Botão para fechar o jogo
 
+    [Header("startLobby")] 
+    public LobbyMeneger lobby;
+    
     void Start()
     {
         // Verifica se os botões estão atribuídos e adiciona os listeners
         if (playButton != null)
         {
-            playButton.onClick.AddListener(StartGame);
+            playButton.onClick.AddListener(lobby.lobbyShow);
         }
         else
         {
