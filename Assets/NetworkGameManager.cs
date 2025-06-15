@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using Unity.Netcode;
 using Unity.Netcode.Components;
@@ -10,10 +11,13 @@ public class NetworkGameManager : MonoBehaviour
     public GameObject playerPrefabA;
     public GameObject playerPrefabB;
 
+    private Dictionary<ulong, string> clientTeams = new Dictionary<ulong, string>();
+
     public void Start()
     {
         if (NetworkManager.Singleton.IsServer)
         {
+            NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         }
     }
@@ -22,7 +26,7 @@ public class NetworkGameManager : MonoBehaviour
     {
         if (NetworkManager.Singleton.IsServer)
         {
-            
+            NetworkManager.Singleton.ConnectionApprovalCallback += ApprovalCheck;
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
             OnClientConnected(NetworkManager.Singleton.LocalClientId);
             StartGame();
@@ -38,22 +42,33 @@ public class NetworkGameManager : MonoBehaviour
     }
     void OnClientConnected(ulong clientId)
     {
-        // Pega o ConnectionData do cliente
-        var connData = Encoding.ASCII.GetString(NetworkManager.Singleton.NetworkConfig.ConnectionData);
-    
-        GameObject playerToSpawn;
-    
-        if (connData == "A")
-            playerToSpawn = Instantiate(playerPrefabA);
-        else if (connData == "B")
-            playerToSpawn = Instantiate(playerPrefabB);
-        else
-            playerToSpawn = Instantiate(playerPrefabA); // fallback
-    
-        var netObj = playerToSpawn.GetComponent<NetworkObject>();
-        netObj.SpawnAsPlayerObject(clientId);
+        
+        if (!NetworkManager.Singleton.IsServer)
+            return;
+
+        string team = clientTeams.ContainsKey(clientId) ? clientTeams[clientId] : "A";
+
+        GameObject playerToSpawn = team switch
+        {
+            "A" => Instantiate(playerPrefabA),
+            "B" => Instantiate(playerPrefabB),
+            _ => Instantiate(playerPrefabA)
+        };
+
+        playerToSpawn.GetComponent<NetworkObject>().SpawnAsPlayerObject(clientId);
     }
     
+    private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+    {
+        response.Approved = true;
+        response.CreatePlayerObject = false; // A gente instancia manualmente
+
+        string team = Encoding.ASCII.GetString(request.Payload);
+        Debug.Log($"Client {request.ClientNetworkId} pediu conexão com team: {team}");
+
+        clientTeams[request.ClientNetworkId] = team;
+    }
+
     // Host chama isso para trocar de cena
     public void StartGame()
     {

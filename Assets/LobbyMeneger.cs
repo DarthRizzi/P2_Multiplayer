@@ -45,7 +45,7 @@ public class LobbyMeneger : MonoBehaviour
     [SerializeField] private GameObject craftLobbyObj;
 
     string playerName;
-    private Player playerData;
+    public Player playerData;
     private string joinedLobbyId;
     public Lobby lobby;
 
@@ -207,7 +207,12 @@ public class LobbyMeneger : MonoBehaviour
                     joinAllocation.ConnectionData,
                     joinAllocation.HostConnectionData
                 );
-
+                string team = playerData.Data["Team"].Value;
+                byte[] connectionData = Encoding.ASCII.GetBytes(team);
+                
+                // define antes de iniciar o client
+                NetworkManager.Singleton.NetworkConfig.ConnectionData = connectionData;
+                
                 NetworkManager.Singleton.StartClient();
                 isJoin = true;
                 return;
@@ -407,9 +412,6 @@ public class LobbyMeneger : MonoBehaviour
                 allocation.Key,
                 allocation.ConnectionData
             );
-            string team = playerData.Data["Team"].Value;
-            byte[] connectionData = Encoding.ASCII.GetBytes(team);
-            NetworkManager.Singleton.NetworkConfig.ConnectionData = connectionData;
             
             NetworkManager.Singleton.StartHost();
             
