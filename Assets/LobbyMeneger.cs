@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using TMPro;
 using Unity.Netcode;
@@ -11,64 +12,70 @@ using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class LobbyMeneger : MonoBehaviour
 {
     #region variaves
-    
-    static public LobbyMeneger Instance;
-    
-    [Header("mostra Lobbys")]
-    public GameObject mostraLobby;
 
-    [Header("cria o perfil")]
-    public GameObject crearOPerfil;
+    static public LobbyMeneger Instance;
+
+    [Header("mostra Lobbys")] public GameObject mostraLobby;
+
+    [Header("cria o perfil")] public GameObject crearOPerfil;
     public TMP_InputField nomeDoJogador;
     public TMP_Text MensagemDeErro;
-    
-    [Header("AntigaUi")]
-    public GameObject antigaUi;
 
-    [Space(10)]
-    [Header("Lobby List")]
-    [SerializeField] private Transform lobbyContectParent;
+    [Header("AntigaUi")] public GameObject antigaUi;
+
+    [Space(10)] [Header("Lobby List")] [SerializeField]
+    private Transform lobbyContectParent;
+
     [SerializeField] private GameObject lobbyIteamPrefab;
-    
-    [Space(10)]
-    [Header("Joined Lobby")]
-    [SerializeField] private Transform playerIteamPrefab;
+
+    [Space(10)] [Header("Joined Lobby")] [SerializeField]
+    private Transform playerIteamPrefab;
+
     [SerializeField] private Transform playerListParent;
     [SerializeField] private TextMeshProUGUI joinedLobbyNameText;
     [SerializeField] private GameObject joinLobbyStartButton;
     [SerializeField] private GameObject joinLobbyObj;
-    
-    [Header("creat lobby")] 
-    public int createlobbyMaxPlayerField = 2;
+
+    [Header("creat lobby")] public int createlobbyMaxPlayerField = 2;
     public TMP_InputField createLobbyNameField;
     [SerializeField] private GameObject craftLobbyObj;
-    
+
     string playerName;
     private Player playerData;
     private string joinedLobbyId;
     public Lobby lobby;
+
+    public NetworkGameManager meneger;
+    
     #endregion
 
     #region funcao
 
     async void Awake()
     {
+        if (Instance is null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(this);
+        }
+
         nomeDoJogador.characterLimit = 15;
         createLobbyNameField.characterLimit = 15;
-        
-        Instance = this;
 
+        
         await UnityServices.InitializeAsync();
 
 
         if (AuthenticationService.Instance.SessionTokenExists)
             AuthenticationService.Instance.SignOut();
-     
+
         try
         {
             await AuthenticationService.Instance.SignInAnonymouslyAsync();
@@ -77,9 +84,9 @@ public class LobbyMeneger : MonoBehaviour
         {
             Debug.LogError("not singIn");
         }
-        await UnityServices.InitializeAsync();
+
     }
-    
+
     public void VerOnomeDoUsusario()
     {
         if (nomeDoJogador.text == "")
@@ -95,24 +102,28 @@ public class LobbyMeneger : MonoBehaviour
             mostraLobby.SetActive(true);
             showLobbies();
             playerName = nomeDoJogador.text;
-            
-            PlayerDataObject playerDataObjectName = new PlayerDataObject(PlayerDataObject.VisibilityOptions.Public, playerName);
-            PlayerDataObject playerDataObjectTeam = new PlayerDataObject(PlayerDataObject.VisibilityOptions.Public, "A");
-            PlayerDataObject playerDataObjectSave = new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, "0");
 
-            playerData = new Player(id: AuthenticationService.Instance.PlayerId,data:
-                new Dictionary<string, PlayerDataObject> 
-                { 
-                    {"Name", playerDataObjectName },
-                    {"Team", playerDataObjectTeam },
-                    {"SaveNeme", playerDataObjectSave}
+            PlayerDataObject playerDataObjectName =
+                new PlayerDataObject(PlayerDataObject.VisibilityOptions.Public, playerName);
+            PlayerDataObject playerDataObjectTeam =
+                new PlayerDataObject(PlayerDataObject.VisibilityOptions.Public, "A");
+            PlayerDataObject playerDataObjectSave =
+                new PlayerDataObject(PlayerDataObject.VisibilityOptions.Member, "0");
+
+            playerData = new Player(id: AuthenticationService.Instance.PlayerId, data:
+                new Dictionary<string, PlayerDataObject>
+                {
+                    { "Name", playerDataObjectName },
+                    { "Team", playerDataObjectTeam },
+                    { "SaveNeme", playerDataObjectSave }
                 });
             return;
         }
+
         MensagemDeErro.text = "O campo não pode esta nulo ou vazio";
-        
+
     }
-    
+
     public void lobbyShow()
     {
         crearOPerfil.SetActive(true);
@@ -136,19 +147,20 @@ public class LobbyMeneger : MonoBehaviour
                 Destroy(t.gameObject);
             }
 
-            foreach(Lobby lobby in querryResponse.Results)
+            foreach (Lobby lobby in querryResponse.Results)
             {
                 GameObject newLobbyIteam = Instantiate(lobbyIteamPrefab, lobbyContectParent);
                 newLobbyIteam.GetComponent<JoinLobbyButton>().lobbyId = lobby.Id;
                 newLobbyIteam.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = lobby.Name;
-                newLobbyIteam.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = lobby.Players.Count + "/" + lobby.MaxPlayers;
-            
+                newLobbyIteam.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text =
+                    lobby.Players.Count + "/" + lobby.MaxPlayers;
+
             }
 
             await Task.Delay(1000);
         }
     }
-    
+
     public async void JoinLobby(string lobbyID)
     {
         try
@@ -168,6 +180,7 @@ public class LobbyMeneger : MonoBehaviour
     }
 
     private bool isJoin;
+
     private async void UpdateLobbyInfo()
     {
         while (Application.isPlaying)
@@ -229,6 +242,66 @@ public class LobbyMeneger : MonoBehaviour
             await Task.Delay(3 * 1000);
         }
     }
+
+    private async void UpdateLobbyTime()
+    {
+        if (string.IsNullOrEmpty(joinedLobbyId)) return;
+
+        Lobby lobby = await LobbyService.Instance.GetLobbyAsync(joinedLobbyId);
+
+        if (lobby == null) return;
+
+
+        if (!isJoin && lobby.Data["JoinCode"].Value != string.Empty)
+        {
+
+            JoinAllocation joinAllocation =
+                await RelayService.Instance.JoinAllocationAsync(lobby.Data["JoinCode"].Value);
+
+            NetworkManager.Singleton.GetComponent<UnityTransport>().SetClientRelayData(
+                joinAllocation.RelayServer.IpV4,
+                (ushort)joinAllocation.RelayServer.Port,
+                joinAllocation.AllocationIdBytes,
+                joinAllocation.Key,
+                joinAllocation.ConnectionData,
+                joinAllocation.HostConnectionData
+            );
+            
+            string team = playerData.Data["Team"].Value;
+            byte[] connectionData = Encoding.ASCII.GetBytes(team);
+            NetworkManager.Singleton.NetworkConfig.ConnectionData = connectionData;
+            
+            NetworkManager.Singleton.StartClient();
+            isJoin = true;
+            return;
+        }
+
+        if (AuthenticationService.Instance.PlayerId == lobby.HostId)
+        {
+            joinLobbyStartButton.SetActive(true);
+        }
+        else
+        {
+            joinLobbyStartButton.SetActive(false);
+        }
+
+        joinedLobbyNameText.text = lobby.Name;
+
+        foreach (Transform t in playerListParent)
+        {
+            Destroy(t.gameObject);
+        }
+
+        foreach (Player player in lobby.Players)
+        {
+            GameObject newPlayerIteam = Instantiate(playerIteamPrefab.gameObject, playerListParent);
+            newPlayerIteam.transform.GetChild(0).GetComponent<TMP_Text>().text = player.Data["Name"].Value;
+            newPlayerIteam.transform.GetChild(1).GetComponent<TMP_Text>().text = player.Data["Team"].Value;
+            newPlayerIteam.transform.GetChild(2).GetComponent<TMP_Text>().text =
+                (lobby.HostId == player.Id) ? "owner" : "User";
+
+        }
+    }
     
     public async void CreateLobby()
     {
@@ -250,7 +323,9 @@ public class LobbyMeneger : MonoBehaviour
 
         try
         {
-            createdLobby = await LobbyService.Instance.CreateLobbyAsync(createLobbyNameField.text, createlobbyMaxPlayerField, options);
+            createdLobby =
+                await LobbyService.Instance.CreateLobbyAsync(createLobbyNameField.text, createlobbyMaxPlayerField,
+                    options);
             joinedLobbyId = createdLobby.Id;
 
             lobby = createdLobby;
@@ -264,7 +339,7 @@ public class LobbyMeneger : MonoBehaviour
         {
             Debug.Log(e);
         }
-
+        
         lobbyHeartbeat(createdLobby);
         joinLobbyObj.SetActive(true);
         craftLobbyObj.SetActive(false);
@@ -272,7 +347,7 @@ public class LobbyMeneger : MonoBehaviour
         //await LobbyStart();
 
     }
-    
+
     private async void lobbyHeartbeat(Lobby lobby)
     {
         while (true)
@@ -287,8 +362,9 @@ public class LobbyMeneger : MonoBehaviour
 
         }
     }
-    
+
     bool a;
+
     public async void DestroyLobby()
     {
         a = true;
@@ -300,8 +376,10 @@ public class LobbyMeneger : MonoBehaviour
         {
 
         }
+
         await LobbyService.Instance.DeleteLobbyAsync(lobby.Id);
     }
+
     public async void LobbyStart()
     {
         Lobby lobby = await LobbyService.Instance.GetLobbyAsync(joinedLobbyId);
@@ -324,22 +402,63 @@ public class LobbyMeneger : MonoBehaviour
 
             NetworkManager.Singleton.GetComponent<UnityTransport>().SetHostRelayData(
                 allocation.RelayServer.IpV4,
-                (ushort)allocation.RelayServer.Port, 
+                (ushort)allocation.RelayServer.Port,
                 allocation.AllocationIdBytes,
                 allocation.Key,
                 allocation.ConnectionData
             );
-
+            string team = playerData.Data["Team"].Value;
+            byte[] connectionData = Encoding.ASCII.GetBytes(team);
+            NetworkManager.Singleton.NetworkConfig.ConnectionData = connectionData;
+            
             NetworkManager.Singleton.StartHost();
-
+            
+            meneger.StartHosting();
         }
         catch (RelayServiceException e)
         {
             Debug.Log(e);
         }
-        
+
     }
+
+    public async void SwitchPlayerTeamButtom()
+    {
+        string newTeam;
+
+        if (playerData.Data["Team"].Value == "A")
+        {
+            newTeam = "B";
+        }
+        else
+        {
+            newTeam = "A";
+        }
+
+        await LobbyService.Instance.UpdatePlayerAsync(joinedLobbyId, AuthenticationService.Instance.PlayerId,
+            new UpdatePlayerOptions
+            {
+                Data = new Dictionary<string, PlayerDataObject>
+                {
+                    {
+                        "Team",
+                        new PlayerDataObject(PlayerDataObject.VisibilityOptions.Public,
+                            playerData.Data["Team"].Value = newTeam)
+                    }
+                }
+            });
+        UpdateLobbyTime();
+    }
+    #endregion
+
+    
+    #region mudar de scena
+    
+    //aaa
+    
     
     #endregion
+    
     #endregion
+
 }

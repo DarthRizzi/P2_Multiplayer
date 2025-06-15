@@ -1,41 +1,50 @@
+using System;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class GameOverManager : MonoBehaviour
+public class GameOverManager : NetworkBehaviour
 {
     [Header("Referências")]
     public ScoreManager scoreManager;
-    public MonoBehaviour scriptToDisable; // Script a ser desabilitado
+    public HockeyPuckController scriptToDisable; // Script a ser desabilitado
     public TMP_Text gameOverText, instructionsText, pauseText; // Texto de game over (deve estar desativado inicialmente)
-
+    public Vector3 positionDisc;
+    
     [Header("Configurações")]
     public int winningScore = 5;
     public string menuSceneName = "MenuScene";
     public string leftWinMessage = "Left Player Wins!";
     public string rightWinMessage = "Right Player Wins!";
 
-    private bool gameOver = false, isPaused = false;
-
+    private bool gameOver = true, isPaused = false;
+    
     void Update()
     {
-
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            TogglePause();
-        }
-
+        if(!IsServer) return;
+        
         // Verifica se o jogo já acabou
         if (gameOver)
         {
             // Se qualquer input for detectado, carrega o menu
             if (Input.GetKeyDown(KeyCode.R))
             {
-                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                scoreManager.scoreRight = 0;
+                scoreManager.scoreLeft = 0;
+                scoreManager.rightScoreFormat = "Right: {0}";
+                scoreManager.scoreFormat = "Left: {0}";;
+                scriptToDisable.transform.position = positionDisc;
+                scriptToDisable.enabled = true;
+                scriptToDisable.endPartida = false;
+                scriptToDisable.StartDisc();
+                
+                //SceneManager.LoadScene(SceneManager.GetActiveScene().name);
             }
             else if (Input.GetKeyDown(KeyCode.M))
             {
-                SceneManager.LoadScene(menuSceneName);
+                //NetworkManager.Singleton.
+                //SceneManager.LoadScene(menuSceneName);
             }
         }
 
@@ -53,7 +62,7 @@ public class GameOverManager : MonoBehaviour
     void EndGame(string message)
     {
         gameOver = true;
-
+        scriptToDisable.endPartida = true;
         // Desabilita o script especificado
         if (scriptToDisable != null)
         {
@@ -68,27 +77,5 @@ public class GameOverManager : MonoBehaviour
             gameOverText.text = message;
         }
 
-        // Opcional: Pausa o jogo
-        Time.timeScale = 0f;
-    }
-
-    void OnDestroy()
-    {
-        // Garante que o timescale volte ao normal quando o objeto for destruído
-        Time.timeScale = 1f;
-    }
-    
-     void TogglePause()
-    {
-        isPaused = !isPaused;
-
-        // Ativa/desativa o texto de pausa
-        if (pauseText != null)
-        {
-            pauseText.gameObject.SetActive(isPaused);
-        }
-
-        // Pausa/despausa o jogo
-        Time.timeScale = isPaused ? 0f : 1f;
     }
 }

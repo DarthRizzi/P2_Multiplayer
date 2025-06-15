@@ -1,9 +1,10 @@
+using Unity.Netcode;
 using UnityEngine;
 
-public class RacketFuckingController : MonoBehaviour
+public class RacketFuckingController : NetworkBehaviour
 {
     [Header("Referências")]
-    public Transform pivot;
+    public Vector3 pivot;
 
     [Header("Teclas de Movimento")]
     public KeyCode rotateLeftKey = KeyCode.A;
@@ -23,8 +24,10 @@ public class RacketFuckingController : MonoBehaviour
 
     void Start()
     {
+        if(!IsOwner)return;
         // Calcula ângulo inicial com base na posição inicial da raquete
-        Vector3 dir = transform.position - pivot.position;
+        
+        Vector3 dir = transform.position - pivot;
         currentAngle = Mathf.Atan2(dir.z, dir.x) * Mathf.Rad2Deg;
         
         // Garante que o ângulo inicial esteja dentro dos limites
@@ -39,6 +42,8 @@ public class RacketFuckingController : MonoBehaviour
 
     void Update()
     {
+        if(!IsOwner)return;
+        
         float input = 0f;
 
         if (Input.GetKey(rotateLeftKey)) input -= 1f;
@@ -63,7 +68,7 @@ public class RacketFuckingController : MonoBehaviour
         // Converte o ângulo em uma posição circular
         float rad = currentAngle * Mathf.Deg2Rad;
         Vector3 offset = new Vector3(Mathf.Cos(rad), 0f, Mathf.Sin(rad)) * radius;
-        transform.position = pivot.position + offset;
+        transform.position = pivot + offset;
 
         // Atualiza a orientação da raquete
         UpdateRacketOrientation();
@@ -72,7 +77,7 @@ public class RacketFuckingController : MonoBehaviour
     void UpdateRacketOrientation()
     {
         // Faz a raquete "olhar" para o centro
-        Vector3 lookDirection = (pivot.position - transform.position).normalized;
+        Vector3 lookDirection = (pivot - transform.position).normalized;
         
         if (Mirror)
         {
@@ -98,8 +103,8 @@ public class RacketFuckingController : MonoBehaviour
     {
         float rad = angle * Mathf.Deg2Rad;
         Vector3 offset = new Vector3(Mathf.Cos(rad), 0f, Mathf.Sin(rad)) * radius;
-        Vector3 limitPosition = pivot.position + offset;
-        Gizmos.DrawLine(pivot.position, limitPosition);
+        Vector3 limitPosition = pivot + offset;
+        Gizmos.DrawLine(pivot, limitPosition);
         Gizmos.DrawSphere(limitPosition, 0.1f);
     }
 }

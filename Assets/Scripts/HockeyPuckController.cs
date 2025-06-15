@@ -1,6 +1,7 @@
+using Unity.Netcode;
 using UnityEngine;
 
-public class HockeyPuckController : MonoBehaviour
+public class HockeyPuckController : NetworkBehaviour
 {
     [Header("Configurações do Disco")]
     public float initialForce = 5f;
@@ -12,16 +13,28 @@ public class HockeyPuckController : MonoBehaviour
     private Rigidbody rb;
     private bool isResetting = false;
 
+    public bool endPartida = false;
+    
     public ScoreManager scoreManager;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        ApplyRandomForce();
+
     }
+
+    public void StartDisc()
+    {
+        if(IsServer)
+            ApplyRandomForce();
+    }
+    
 
     void ApplyRandomForce()
     {
+        if(!IsServer) return;
+        if(endPartida) return;
+        
         Vector3 randomDirection = new Vector3(
             Random.Range(-1f, 1f),
             0f,
